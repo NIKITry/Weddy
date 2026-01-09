@@ -51,6 +51,7 @@ services:
       - ASPNETCORE_URLS=http://+:80
       - ApiBaseUrl=${API_BASE_URL:-/api}
       - InvitationBaseUrl=${INVITATION_BASE_URL:-https://weddy.example.com}
+      - Admin__ApiKey=${ADMIN_API_KEY:-your-secret-admin-key-change-in-production}
     depends_on:
       - weddy-api
     networks:

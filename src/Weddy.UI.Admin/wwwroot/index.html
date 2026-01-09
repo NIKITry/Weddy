@@ -282,9 +282,9 @@
                                         <span class="font-semibold">📝 Мета-информация:</span> <span x-text="inv.metaNote"></span>
                                     </div>
                                     <div class="text-xs text-gray-400 mt-2">
-                                        <a :href="baseUrl + '/i/' + inv.token" target="_blank" 
+                                        <a :href="getInvitationLink(inv.token)" target="_blank" 
                                            class="text-pink-500 hover:underline break-all" 
-                                           x-text="baseUrl + '/i/' + inv.token"></a>
+                                           x-text="getInvitationLink(inv.token)"></a>
                                     </div>
                                 </div>
                             </div>
@@ -343,24 +343,55 @@
                 adminKeyInput: '',
                 rememberMe: false,
 
-                init() {
+                async init() {
                     // Загружаем сохраненный ключ при инициализации
                     const savedKey = sessionStorage.getItem('weddy_admin_key') || localStorage.getItem('weddy_admin_key');
                     if (savedKey) {
                         this.adminKey = savedKey;
-                        this.loadEventText();
-                        this.loadInvitations();
+                        // Проверяем валидность ключа перед загрузкой данных
+                        const isValid = await this.validateAdminKey();
+                        if (!isValid) {
+                            // Ключ невалиден, очищаем и показываем форму ввода
+                            this.logout();
+                            alert('API ключ недействителен. Введите правильный ключ.');
+                        } else {
+                            this.loadEventText();
+                            this.loadInvitations();
+                        }
                     }
                 },
 
-                setAdminKey() {
+                async validateAdminKey() {
+                    if (!this.adminKey) return false;
+                    try {
+                        const response = await fetch(`${this.apiBaseUrl}/admin/event`, {
+                            headers: { 'X-Admin-Key': this.adminKey }
+                        });
+                        return response.ok; // 200 = валидный ключ, 401 = невалидный
+                    } catch (error) {
+                        return false;
+                    }
+                },
+
+                async setAdminKey() {
                     if (!this.adminKeyInput.trim()) {
                         alert('Введите API ключ');
                         return;
                     }
-                    this.adminKey = this.adminKeyInput.trim();
+                    const inputKey = this.adminKeyInput.trim();
                     
-                    // Сохраняем ключ в зависимости от выбора пользователя
+                    // Проверяем валидность ключа перед сохранением
+                    const tempKey = this.adminKey;
+                    this.adminKey = inputKey;
+                    const isValid = await this.validateAdminKey();
+                    
+                    if (!isValid) {
+                        this.adminKey = tempKey;
+                        alert('Неверный API ключ. Проверьте правильность ввода.');
+                        return;
+                    }
+                    
+                    // Ключ валиден, сохраняем
                     if (this.rememberMe) {
                         localStorage.setItem('weddy_admin_key', this.adminKey);
                         sessionStorage.removeItem('weddy_admin_key'); // Очищаем sessionStorage если выбрали localStorage
@@ -380,6 +411,8 @@
                     localStorage.removeItem('weddy_admin_key');
                     this.invitations = [];
                     this.eventText = '';
+                    // Редирект на страницу входа
+                    window.location.href = '/login';
                 },
 
                 async loadEventText() {
@@ -387,6 +420,13 @@
                         const response = await fetch(`${this.apiBaseUrl}/admin/event`, {
                             headers: { 'X-Admin-Key': this.adminKey }
                         });
+                        if (response.status === 401) {
+                            this.handleUnauthorized();
+                            return;
+                        }
+                        if (!response.ok) {
+                            throw new Error('Ошибка загрузки данных');
+                        }
                         const data = await response.json();
                         this.eventText = data.invitation_text || '';
                         this.eventDate = data.event_date ? data.event_date.split('T')[0] : '';
@@ -422,6 +462,10 @@
                                 coupleDisplayName: this.coupleDisplayName || ''
                             })
                         });
+                        if (response.status === 401) {
+                            this.handleUnauthorized();
+                            return;
+                        }
                         if (response.ok) {
                             this.eventSuccess = true;
                             this.eventMessage = '✅ Настройки сохранены!';
@@ -457,6 +501,10 @@
                             },
                             body: JSON.stringify(requestBody)
                         });
+                        if (response.status === 401) {
+                            this.handleUnauthorized();
+                            return;
+                        }
                         if (response.ok) {
                             this.newInvitationName = '';
                             this.newInvitationText = '';
@@ -483,6 +531,13 @@
                         const response = await fetch(`${this.apiBaseUrl}/admin/invitations?${params}`, {
                             headers: { 'X-Admin-Key': this.adminKey }
                         });
+                        if (response.status === 401) {
+                            this.handleUnauthorized();
+                            return;
+                        }
+                        if (!response.ok) {
+                            throw new Error('Ошибка загрузки приглашений');
+                        }
                         const data = await response.json();
                         this.invitations = data.items || [];
                         this.totalCount = data.total || 0;
@@ -491,6 +546,12 @@
                     } finally {
                         this.loading = false;
                     }
+                },
+
+                handleUnauthorized() {
+                    // Ключ невалиден, очищаем и показываем форму ввода
+                    this.logout();
+                    alert('API ключ недействителен. Введите правильный ключ.');
                 },
 
                 async toggleArchive(inv) {
@@ -503,6 +564,10 @@
                             },
                             body: JSON.stringify({ archived: !inv.archived })
                         });
+                        if (response.status === 401) {
+                            this.handleUnauthorized();
+                            return;
+                        }
                         if (response.ok) {
                             await this.loadInvitations();
                         }
@@ -512,10 +577,28 @@
                 },
 
                 copyLink(token) {
-                    const link = `${this.baseUrl}/i/${token}`;
+                    const link = this.getInvitationLink(token);
                     navigator.clipboard.writeText(link).then(() => {
                         alert('Ссылка скопирована!');
                     });
+                },
+
+                getInvitationLink(token) {
+                    // Нормализуем baseUrl для отображения ссылки
+                    // Предполагается, что URL в конфигурации корректен
+                    let normalizedBaseUrl = this.baseUrl.trim();
+                    
+                    // Добавляем протокол если отсутствует
+                    if (!normalizedBaseUrl.startsWith('http://') && !normalizedBaseUrl.startsWith('https://')) {
+                        normalizedBaseUrl = (normalizedBaseUrl.includes('localhost') || normalizedBaseUrl.includes('127.0.0.1')) 
+                            ? `http://${normalizedBaseUrl}` 
+                            : `https://${normalizedBaseUrl}`;
+                    }
+                    
+                    // Убираем trailing slash если есть
+                    normalizedBaseUrl = normalizedBaseUrl.replace(/\/$/, '');
+                    
+                    return `${normalizedBaseUrl}/i/${token}`;
                 },
 
                 async deleteInvitation(inv) {
@@ -529,6 +612,10 @@
                                 'X-Admin-Key': this.adminKey
                             }
                         });
+                        if (response.status === 401) {
+                            this.handleUnauthorized();
+                            return;
+                        }
                         if (response.ok || response.status === 204) {
                             await this.loadInvitations();
                         } else {
