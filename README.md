@@ -26,7 +26,7 @@ CORS_ORIGINS=https://weddy.example.com
 INVITATION_BASE_URL=https://weddy.example.com
 
 # 2. Запустите
-docker-compose up -d --build
+docker compose up -d --build
 
 # 3. Проверьте
 curl http://localhost/health

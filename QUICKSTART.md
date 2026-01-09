@@ -7,10 +7,10 @@
 cp .env.example .env
 
 # 2. Запустите все сервисы
-docker-compose up -d --build
+docker compose up -d --build
 
 # 3. Проверьте статус
-docker-compose ps
+docker compose ps
 ```
 
 ## Переменные окружения (.env)
@@ -50,13 +50,13 @@ NGINX_HTTPS_PORT=443                          # HTTPS порт (по умолч�
 curl http://localhost/health
 
 # Логи
-docker-compose logs -f
+docker compose logs -f
 
 # Остановка
-docker-compose down
+docker compose down
 
 # Остановка с удалением данных БД
-docker-compose down -v
+docker compose down -v
 ```
 
 ## Миграции
