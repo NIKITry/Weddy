@@ -76,7 +76,10 @@ app.MapGet("/login", async (HttpContext context) =>
     if (!string.IsNullOrEmpty(providedKey) && providedKey == adminApiKey)
     {
         // Уже авторизован - редирект на главную
-        context.Response.Redirect("/");
+        // Определяем базовый путь из заголовка X-Forwarded-Prefix
+        var prefix = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault() ?? "";
+        var homePath = string.IsNullOrEmpty(prefix) ? "/" : prefix;
+        context.Response.Redirect(homePath);
         return Results.Empty;
     }
     
@@ -176,8 +179,10 @@ app.MapGet("/", async (HttpContext context) =>
     if (string.IsNullOrEmpty(providedKey) || providedKey != adminApiKey)
     {
         // Ключ не предоставлен или неверный - редирект на страницу входа
-        // Используем относительный путь, чтобы работало через Nginx
-        context.Response.Redirect("login");
+        // Определяем базовый путь из заголовка X-Forwarded-Prefix или используем относительный путь
+        var prefix = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault() ?? "";
+        var loginPath = string.IsNullOrEmpty(prefix) ? "login" : $"{prefix}/login";
+        context.Response.Redirect(loginPath);
         return Results.Empty;
     }
     
@@ -210,8 +215,10 @@ app.MapGet("/logout", async (HttpContext context) =>
     {
         Path = "/"
     });
-    // Используем относительный путь, чтобы работало через Nginx
-    context.Response.Redirect("login");
+    // Определяем базовый путь из заголовка X-Forwarded-Prefix или используем относительный путь
+    var prefix = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault() ?? "";
+    var loginPath = string.IsNullOrEmpty(prefix) ? "login" : $"{prefix}/login";
+    context.Response.Redirect(loginPath);
     return Results.Empty;
 });
 
