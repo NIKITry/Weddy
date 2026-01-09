@@ -54,12 +54,16 @@ app.MapPost("/login", async (HttpContext context) =>
         HttpOnly = true,
         Secure = false, // Установите true для HTTPS
         SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax,
-        Path = "/", // Явно указываем путь для cookie
-        MaxAge = rememberMe ? TimeSpan.FromDays(30) : null // Session cookie если не rememberMe
+        Path = "/"
     };
     
+    if (rememberMe)
+    {
+        cookieOptions.MaxAge = TimeSpan.FromDays(30);
+    }
+    // Если rememberMe = false, не устанавливаем MaxAge - это будет session cookie
+    
     context.Response.Cookies.Append("weddy_admin_key", providedKey, cookieOptions);
-    // Возвращаем 200 OK - редирект сделает JavaScript
     context.Response.StatusCode = 200;
     await context.Response.WriteAsync("OK");
 });
@@ -129,7 +133,6 @@ app.MapGet("/login", async (HttpContext context) =>
                         return;
                     }
                     this.errorMessage = '';
-                    // Отправляем ключ через POST запрос (безопасно, не в URL)
                     try {
                         const formData = new FormData();
                         formData.append('key', this.adminKeyInput.trim());
@@ -138,16 +141,13 @@ app.MapGet("/login", async (HttpContext context) =>
                         const response = await fetch('login', {
                             method: 'POST',
                             body: formData,
-                            credentials: 'same-origin' // Важно: отправляем cookie
+                            credentials: 'same-origin'
                         });
                         
-                        // Проверяем статус явно
                         if (response.status === 200) {
-                            // Cookie установлен, редирект на админку
-                            // Небольшая задержка, чтобы cookie успел установиться
                             setTimeout(() => {
-                                window.location.href = '/';
-                            }, 100);
+                                window.location.href = window.location.pathname.replace(/\/login$/, '') || '/';
+                            }, 200);
                         } else {
                             const errorText = await response.text();
                             this.errorMessage = errorText || 'Неверный API ключ';
