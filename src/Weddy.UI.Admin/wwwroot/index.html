@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weddy RSVP - Админ-панель</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gradient-to-br from-pink-50 to-purple-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8" x-data="adminApp()" x-init="init()">
+        <!-- Admin Key Input -->
+        <div x-show="!adminKey" class="bg-white rounded-lg shadow-lg p-8 max-w-md mx-auto">
+            <h1 class="text-3xl font-bold text-center mb-6 text-purple-600">🔐 Админ-панель</h1>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        API ключ
+                    </label>
+                    <input 
+                        x-model="adminKeyInput"
+                        @keyup.enter="setAdminKey()"
+                        type="password" 
+                        placeholder="Введите API ключ"
+                        class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-pink-500">
+                </div>
+                <div class="flex items-center">
+                    <input 
+                        x-model="rememberMe"
+                        type="checkbox" 
+                        id="rememberMe"
+                        class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
+                    <label for="rememberMe" class="ml-2 block text-sm text-gray-700">
+                        Запомнить меня (до закрытия браузера)
+                    </label>
+                </div>
+                <button 
+                    @click="setAdminKey()"
+                    class="w-full bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold">
+                    Войти
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div x-show="adminKey">
+            <!-- Logout Button -->
+            <div class="mb-4 flex justify-end">
+                <button 
+                    @click="logout()"
+                    class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm">
+                    🚪 Выйти
+                </button>
+            </div>
+
+            <!-- Header -->
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">💍 Weddy RSVP</h1>
+                <p class="text-gray-600">Управление свадебными приглашениями</p>
+            </div>
+
+            <!-- Event Settings -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-semibold mb-4">📝 Настройки события</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Текст приглашения
+                    </label>
+                    <textarea 
+                        x-model="eventText" 
+                        class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        rows="6"
+                        placeholder="Введите общий текст приглашения, который увидят все гости..."></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Дата мероприятия
+                    </label>
+                    <input 
+                        x-model="eventDate"
+                        type="date"
+                        class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-pink-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Имена пары для ссылок (необязательно)
+                    </label>
+                    <input 
+                        x-model="coupleNamesForToken"
+                        type="text"
+                        placeholder="Например: nikita violetta или nikita-violetta"
+                        class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent">
+                    <p class="text-xs text-gray-500 mt-1">Используется для генерации красивых ссылок вида: nikita-violetta-xxxxx</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Имена пары для отображения (необязательно)
+                    </label>
+                    <input 
+                        x-model="coupleDisplayName"
+                        type="text"
+                        placeholder="Например: Никита и Виолетта"
+                        class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent">
+                    <p class="text-xs text-gray-500 mt-1">Отображается на карточке приглашения как "Ваши [имена]" красивым шрифтом</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        План мероприятия (необязательно)
+                    </label>
+                    <div class="space-y-3">
+                        <template x-for="(item, index) in eventPlanItems" :key="index">
+                            <div class="flex gap-2 items-start p-3 border rounded-lg bg-gray-50">
+                                <div class="flex-1 grid grid-cols-3 gap-2">
+                                    <input 
+                                        x-model="eventPlanItems[index].time"
+                                        type="text" 
+                                        placeholder="16:00"
+                                        class="p-2 border rounded text-sm"
+                                        style="max-width: 100px;">
+                                    <input 
+                                        x-model="eventPlanItems[index].title"
+                                        type="text" 
+                                        placeholder="Название события"
+                                        class="p-2 border rounded text-sm">
+                                    <input 
+                                        x-model="eventPlanItems[index].location"
+                                        type="text" 
+                                        placeholder="Место проведения"
+                                        class="p-2 border rounded text-sm">
+                                </div>
+                                <button 
+                                    @click="eventPlanItems.splice(index, 1)"
+                                    type="button"
+                                    class="text-red-500 hover:text-red-700 px-2">
+                                    ✕
+                                </button>
+                            </div>
+                        </template>
+                        <button 
+                            @click="eventPlanItems.push({ time: '', title: '', location: '' })"
+                            type="button"
+                            class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm">
+                            + Добавить пункт
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">Добавьте пункты плана мероприятия с временем, названием и местом</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Примечание внизу карточки
+                    </label>
+                    <textarea 
+                        x-model="footerNote" 
+                        class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        rows="4"
+                        placeholder="Введите текст примечания, который будет отображаться внизу карточки после ответа RSVP..."></textarea>
+                    <p class="text-xs text-gray-500 mt-1">Текст будет отображаться внизу карточки приглашения после секции RSVP</p>
+                </div>
+            </div>
+            <button 
+                @click="saveEventText()"
+                :disabled="saving"
+                class="mt-4 bg-pink-500 hover:bg-pink-600 text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50">
+                <span x-show="!saving">💾 Сохранить</span>
+                <span x-show="saving">⏳ Сохранение...</span>
+            </button>
+            <div x-show="eventMessage" x-text="eventMessage" 
+                 :class="eventSuccess ? 'text-green-600' : 'text-red-600'"
+                 class="mt-2"></div>
+        </div>
+
+        <!-- Create Invitation -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-semibold mb-4">➕ Создать приглашение</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Имена приглашаемых *
+                    </label>
+                    <input 
+                        x-model="newInvitationName"
+                        @keyup.enter="createInvitation()"
+                        type="text" 
+                        placeholder="Например: Иван и Мария"
+                        class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-pink-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Индивидуальный текст приглашения (необязательно)
+                    </label>
+                    <textarea 
+                        x-model="newInvitationText"
+                        class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-pink-500"
+                        rows="3"
+                        placeholder="Персональное обращение к гостям"></textarea>
+                    <p class="text-xs text-gray-500 mt-1">Если оставить пустым, будет использован общий текст приглашения</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Мета-информация (только для админа, необязательно)
+                    </label>
+                    <input 
+                        x-model="newInvitationMetaNote"
+                        type="text" 
+                        placeholder="Например: Родственники со стороны невесты"
+                        class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-pink-500">
+                    <p class="text-xs text-gray-500 mt-1">Помогает понять, кому приглашение. Видно только в админке</p>
+                </div>
+                <button 
+                    @click="createInvitation()"
+                    :disabled="creating"
+                    class="w-full bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50">
+                    <span x-show="!creating">✨ Создать приглашение</span>
+                    <span x-show="creating">⏳ Создание...</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Invitations List -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h2 class="text-2xl font-semibold">📋 Список приглашений</h2>
+                    <p class="text-sm text-gray-600 mt-1" x-show="!loading">
+                        Всего: <span class="font-semibold" x-text="totalCount"></span> приглашений
+                    </p>
+                </div>
+                <div class="flex gap-2">
+                    <input 
+                        x-model="searchQuery"
+                        @input="loadInvitations()"
+                        type="text" 
+                        placeholder="Поиск..."
+                        class="p-2 border rounded-lg focus:ring-2 focus:ring-pink-500">
+                    <select 
+                        x-model="statusFilter"
+                        @change="loadInvitations()"
+                        class="p-2 border rounded-lg focus:ring-2 focus:ring-pink-500">
+                        <option value="">Все статусы</option>
+                        <option value="none">Нет ответа</option>
+                        <option value="yes">Придут</option>
+                        <option value="no">Не придут</option>
+                    </select>
+                </div>
+            </div>
+
+            <div x-show="loading" class="text-center py-8">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
+            </div>
+
+            <div x-show="!loading && invitations.length === 0" class="text-center py-8 text-gray-500">
+                Нет приглашений
+            </div>
+
+            <div class="space-y-4">
+                <template x-for="inv in invitations" :key="inv.id">
+                    <div class="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-lg" x-text="inv.displayName"></h3>
+                                <div class="mt-2 space-y-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-sm text-gray-600">Статус:</span>
+                                        <span 
+                                            :class="{
+                                                'bg-yellow-100 text-yellow-800': inv.status === 'none',
+                                                'bg-green-100 text-green-800': inv.status === 'yes',
+                                                'bg-red-100 text-red-800': inv.status === 'no'
+                                            }"
+                                            class="px-2 py-1 rounded text-sm font-semibold"
+                                            x-text="getStatusText(inv.status)"></span>
+                                    </div>
+                                    <div x-show="inv.invitationText && inv.invitationText.trim()" class="mt-2 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                                        <div class="text-xs text-purple-600 font-semibold mb-1">✉️ Индивидуальный текст приглашения:</div>
+                                        <div class="text-sm text-gray-700 whitespace-pre-line" x-text="inv.invitationText"></div>
+                                    </div>
+                                    <div x-show="inv.note" class="text-sm text-gray-600 mt-2">
+                                        <span class="font-semibold">Примечание от гостя:</span> <span x-text="inv.note"></span>
+                                    </div>
+                                    <div x-show="inv.metaNote && inv.metaNote.trim()" class="text-sm text-gray-500 mt-2 italic">
+                                        <span class="font-semibold">📝 Мета-информация:</span> <span x-text="inv.metaNote"></span>
+                                    </div>
+                                    <div class="text-xs text-gray-400 mt-2">
+                                        <a :href="baseUrl + '/i/' + inv.token" target="_blank" 
+                                           class="text-pink-500 hover:underline break-all" 
+                                           x-text="baseUrl + '/i/' + inv.token"></a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 ml-4">
+                                <button 
+                                    @click="copyLink(inv.token)"
+                                    class="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded text-sm">
+                                    📋 Копировать ссылку
+                                </button>
+                                <button 
+                                    @click="toggleArchive(inv)"
+                                    :class="inv.archived ? 'bg-green-500 hover:bg-green-600' : 'bg-orange-500 hover:bg-orange-600'"
+                                    class="text-white px-3 py-1 rounded text-sm">
+                                    <span x-show="!inv.archived">📦 Архивировать</span>
+                                    <span x-show="inv.archived">📤 Разархивировать</span>
+                                </button>
+                                <button 
+                                    @click="deleteInvitation(inv)"
+                                    class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">
+                                    🗑️ Удалить
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            </div>
+        </div>
+        </div>
+    </div>
+
+    <script>
+        function adminApp() {
+            return {
+                eventText: '',
+                eventDate: '',
+                eventPlanItems: [],
+                footerNote: '',
+                coupleNamesForToken: '',
+                coupleDisplayName: '',
+                newInvitationName: '',
+                newInvitationText: '',
+                newInvitationMetaNote: '',
+                invitations: [],
+                loading: false,
+                saving: false,
+                creating: false,
+                searchQuery: '',
+                statusFilter: '',
+                totalCount: 0,
+                eventMessage: '',
+                eventSuccess: false,
+                baseUrl: '{{INVITATION_BASE_URL}}',
+                apiBaseUrl: '{{API_BASE_URL}}',
+                adminKey: '',
+                adminKeyInput: '',
+                rememberMe: false,
+
+                init() {
+                    // Загружаем сохраненный ключ при инициализации
+                    const savedKey = sessionStorage.getItem('weddy_admin_key') || localStorage.getItem('weddy_admin_key');
+                    if (savedKey) {
+                        this.adminKey = savedKey;
+                        this.loadEventText();
+                        this.loadInvitations();
+                    }
+                },
+
+                setAdminKey() {
+                    if (!this.adminKeyInput.trim()) {
+                        alert('Введите API ключ');
+                        return;
+                    }
+                    this.adminKey = this.adminKeyInput.trim();
+                    
+                    // Сохраняем ключ в зависимости от выбора пользователя
+                    if (this.rememberMe) {
+                        localStorage.setItem('weddy_admin_key', this.adminKey);
+                        sessionStorage.removeItem('weddy_admin_key'); // Очищаем sessionStorage если выбрали localStorage
+                    } else {
+                        sessionStorage.setItem('weddy_admin_key', this.adminKey);
+                        localStorage.removeItem('weddy_admin_key'); // Очищаем localStorage если выбрали sessionStorage
+                    }
+                    
+                    this.adminKeyInput = '';
+                    this.loadEventText();
+                    this.loadInvitations();
+                },
+
+                logout() {
+                    this.adminKey = '';
+                    sessionStorage.removeItem('weddy_admin_key');
+                    localStorage.removeItem('weddy_admin_key');
+                    this.invitations = [];
+                    this.eventText = '';
+                },
+
+                async loadEventText() {
+                    try {
+                        const response = await fetch(`${this.apiBaseUrl}/admin/event`, {
+                            headers: { 'X-Admin-Key': this.adminKey }
+                        });
+                        const data = await response.json();
+                        this.eventText = data.invitation_text || '';
+                        this.eventDate = data.event_date ? data.event_date.split('T')[0] : '';
+                        this.eventPlanItems = data.event_plan && Array.isArray(data.event_plan) ? data.event_plan : [];
+                        this.footerNote = data.footer_note || data.footerNote || '';
+                        this.coupleNamesForToken = data.couple_names_for_token || '';
+                        this.coupleDisplayName = data.couple_display_name || '';
+                    } catch (error) {
+                        console.error('Error loading event text:', error);
+                    }
+                },
+
+                async saveEventText() {
+                    this.saving = true;
+                    this.eventMessage = '';
+                    try {
+                        const eventPlan = this.eventPlanItems && this.eventPlanItems.length > 0
+                            ? this.eventPlanItems.filter(item => item.time || item.title || item.location)
+                            : null;
+
+                        const response = await fetch(`${this.apiBaseUrl}/admin/event`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Admin-Key': this.adminKey
+                            },
+                            body: JSON.stringify({
+                                invitationText: this.eventText,
+                                eventDate: this.eventDate || null,
+                                eventPlan: eventPlan && eventPlan.length > 0 ? eventPlan : null,
+                                footerNote: this.footerNote || '',
+                                coupleNamesForToken: this.coupleNamesForToken || '',
+                                coupleDisplayName: this.coupleDisplayName || ''
+                            })
+                        });
+                        if (response.ok) {
+                            this.eventSuccess = true;
+                            this.eventMessage = '✅ Настройки сохранены!';
+                            setTimeout(() => this.eventMessage = '', 3000);
+                        } else {
+                            throw new Error('Ошибка сохранения');
+                        }
+                    } catch (error) {
+                        this.eventSuccess = false;
+                        this.eventMessage = '❌ Ошибка сохранения';
+                    } finally {
+                        this.saving = false;
+                    }
+                },
+
+                async createInvitation() {
+                    if (!this.newInvitationName.trim()) {
+                        alert('Введите имя гостя!');
+                        return;
+                    }
+                    this.creating = true;
+                    try {
+                        const requestBody = {
+                            displayName: this.newInvitationName,
+                            invitationText: this.newInvitationText?.trim() || null,
+                            metaNote: this.newInvitationMetaNote?.trim() || null
+                        };
+                        const response = await fetch(`${this.apiBaseUrl}/admin/invitations`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Admin-Key': this.adminKey
+                            },
+                            body: JSON.stringify(requestBody)
+                        });
+                        if (response.ok) {
+                            this.newInvitationName = '';
+                            this.newInvitationText = '';
+                            this.newInvitationMetaNote = '';
+                            await this.loadInvitations();
+                        } else {
+                            throw new Error('Ошибка создания');
+                        }
+                    } catch (error) {
+                        alert('Ошибка создания приглашения');
+                    } finally {
+                        this.creating = false;
+                    }
+                },
+
+                async loadInvitations() {
+                    this.loading = true;
+                    try {
+                        const params = new URLSearchParams();
+                        if (this.statusFilter) params.append('status', this.statusFilter);
+                        if (this.searchQuery) params.append('query', this.searchQuery);
+                        params.append('archived', 'false');
+
+                        const response = await fetch(`${this.apiBaseUrl}/admin/invitations?${params}`, {
+                            headers: { 'X-Admin-Key': this.adminKey }
+                        });
+                        const data = await response.json();
+                        this.invitations = data.items || [];
+                        this.totalCount = data.total || 0;
+                    } catch (error) {
+                        console.error('Error loading invitations:', error);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                async toggleArchive(inv) {
+                    try {
+                        const response = await fetch(`${this.apiBaseUrl}/admin/invitations/${inv.id}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Admin-Key': this.adminKey
+                            },
+                            body: JSON.stringify({ archived: !inv.archived })
+                        });
+                        if (response.ok) {
+                            await this.loadInvitations();
+                        }
+                    } catch (error) {
+                        alert('Ошибка обновления');
+                    }
+                },
+
+                copyLink(token) {
+                    const link = `${this.baseUrl}/i/${token}`;
+                    navigator.clipboard.writeText(link).then(() => {
+                        alert('Ссылка скопирована!');
+                    });
+                },
+
+                async deleteInvitation(inv) {
+                    if (!confirm(`Вы уверены, что хотите удалить приглашение для "${inv.displayName}"? Это действие нельзя отменить.`)) {
+                        return;
+                    }
+                    try {
+                        const response = await fetch(`${this.apiBaseUrl}/admin/invitations/${inv.id}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-Admin-Key': this.adminKey
+                            }
+                        });
+                        if (response.ok || response.status === 204) {
+                            await this.loadInvitations();
+                        } else {
+                            const errorText = await response.text();
+                            console.error('Ошибка удаления:', response.status, errorText);
+                            throw new Error(`Ошибка удаления: ${response.status}`);
+                        }
+                    } catch (error) {
+                        console.error('Ошибка удаления приглашения:', error);
+                        alert(`Ошибка удаления приглашения: ${error.message || 'Неизвестная ошибка'}`);
+                    }
+                },
+
+                getStatusText(status) {
+                    const statuses = {
+                        'none': '⏳ Нет ответа',
+                        'yes': '✅ Придут',
+                        'no': '❌ Не придут'
+                    };
+                    return statuses[status] || status;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
+
