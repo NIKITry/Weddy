@@ -26,9 +26,66 @@ if (!string.IsNullOrWhiteSpace(invitationBaseUrl) &&
 
 var app = builder.Build();
 
+// Login endpoint - POST запрос для проверки ключа
+app.MapPost("/login", async (HttpContext context) =>
+{
+    var form = await context.Request.ReadFormAsync();
+    var providedKey = form["key"].FirstOrDefault();
+    var rememberMe = form["rememberMe"].FirstOrDefault() == "true";
+    
+    if (string.IsNullOrWhiteSpace(providedKey))
+    {
+        context.Response.StatusCode = 400;
+        await context.Response.WriteAsync("API ключ не предоставлен");
+        return;
+    }
+    
+    // Проверяем ключ через API
+    using var httpClient = new System.Net.Http.HttpClient();
+    httpClient.DefaultRequestHeaders.Add("X-Admin-Key", providedKey);
+    
+    try
+    {
+        var apiResponse = await httpClient.GetAsync($"{apiBaseUrl}/admin/event");
+        if (apiResponse.IsSuccessStatusCode)
+        {
+            // Ключ валиден - устанавливаем cookie
+            var cookieOptions = new Microsoft.AspNetCore.Http.CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false, // Установите true для HTTPS
+                SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax,
+                Path = "/", // Явно указываем путь для cookie
+                MaxAge = rememberMe ? TimeSpan.FromDays(30) : null // Session cookie если не rememberMe
+            };
+            
+            context.Response.Cookies.Append("weddy_admin_key", providedKey, cookieOptions);
+            context.Response.Redirect("/");
+            return;
+        }
+    }
+    catch
+    {
+        // Ошибка подключения к API
+    }
+    
+    // Ключ невалиден
+    context.Response.StatusCode = 401;
+    await context.Response.WriteAsync("Неверный API ключ");
+});
+
 // Login page - только форма ввода ключа
 app.MapGet("/login", async (HttpContext context) =>
 {
+    // Проверяем, есть ли уже валидный ключ в cookie
+    var providedKey = context.Request.Cookies["weddy_admin_key"];
+    if (!string.IsNullOrEmpty(providedKey) && providedKey == adminApiKey)
+    {
+        // Уже авторизован - редирект на главную
+        context.Response.Redirect("/");
+        return Results.Empty;
+    }
+    
     var loginHtml = @"
 <!DOCTYPE html>
 <html lang=""ru"">
@@ -82,23 +139,23 @@ app.MapGet("/login", async (HttpContext context) =>
                         return;
                     }
                     this.errorMessage = '';
-                    // Проверяем ключ через API
+                    // Отправляем ключ через POST запрос (безопасно, не в URL)
                     try {
-                        const response = await fetch('" + apiBaseUrl + @"/admin/event', {
-                            headers: { 'X-Admin-Key': this.adminKeyInput.trim() }
+                        const formData = new FormData();
+                        formData.append('key', this.adminKeyInput.trim());
+                        formData.append('rememberMe', this.rememberMe);
+                        
+                        const response = await fetch('login', {
+                            method: 'POST',
+                            body: formData
                         });
+                        
                         if (response.ok) {
-                            // Ключ валиден, сохраняем и редиректим
-                            if (this.rememberMe) {
-                                localStorage.setItem('weddy_admin_key', this.adminKeyInput.trim());
-                            } else {
-                                sessionStorage.setItem('weddy_admin_key', this.adminKeyInput.trim());
-                            }
-                            // Редирект на админку с ключом в query параметре
-                            // Через nginx путь будет /admin/, поэтому используем относительный путь
-                            window.location.href = '/?key=' + encodeURIComponent(this.adminKeyInput.trim());
+                            // Редирект на админку (без ключа в URL)
+                            window.location.href = '/';
                         } else {
-                            this.errorMessage = 'Неверный API ключ';
+                            const errorText = await response.text();
+                            this.errorMessage = errorText || 'Неверный API ключ';
                         }
                     } catch (error) {
                         this.errorMessage = 'Ошибка подключения к серверу';
@@ -118,14 +175,14 @@ app.MapGet("/login", async (HttpContext context) =>
 // Admin UI Route - отдаем HTML только после проверки ключа
 app.MapGet("/", async (HttpContext context) =>
 {
-    // Проверяем ключ из query параметра или cookie
-    var providedKey = context.Request.Query["key"].FirstOrDefault() 
-        ?? context.Request.Cookies["weddy_admin_key"];
+    // Проверяем ключ только из cookie (безопасно)
+    var providedKey = context.Request.Cookies["weddy_admin_key"];
     
     if (string.IsNullOrEmpty(providedKey) || providedKey != adminApiKey)
     {
         // Ключ не предоставлен или неверный - редирект на страницу входа
-        context.Response.Redirect("/login");
+        // Используем относительный путь, чтобы работало через Nginx
+        context.Response.Redirect("login");
         return Results.Empty;
     }
     
@@ -138,18 +195,6 @@ app.MapGet("/", async (HttpContext context) =>
         // Заменяем плейсхолдеры на реальные URL
         html = html.Replace("{{INVITATION_BASE_URL}}", invitationBaseUrl);
         html = html.Replace("{{API_BASE_URL}}", apiBaseUrl);
-        
-        // Устанавливаем cookie для последующих запросов (если ключ был в query)
-        if (context.Request.Query.ContainsKey("key"))
-        {
-            context.Response.Cookies.Append("weddy_admin_key", providedKey, new Microsoft.AspNetCore.Http.CookieOptions
-            {
-                HttpOnly = true,
-                Secure = false, // Установите true для HTTPS
-                SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax,
-                MaxAge = TimeSpan.FromDays(30) // Или используйте Expires
-            });
-        }
         
         context.Response.ContentType = "text/html";
         context.Response.Headers.Append("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
@@ -165,8 +210,13 @@ app.MapGet("/", async (HttpContext context) =>
 // Logout endpoint - очищает cookie и редиректит на страницу входа
 app.MapGet("/logout", async (HttpContext context) =>
 {
-    context.Response.Cookies.Delete("weddy_admin_key");
-    context.Response.Redirect("/login");
+    // Удаляем cookie с явным указанием Path
+    context.Response.Cookies.Delete("weddy_admin_key", new Microsoft.AspNetCore.Http.CookieOptions
+    {
+        Path = "/"
+    });
+    // Используем относительный путь, чтобы работало через Nginx
+    context.Response.Redirect("login");
     return Results.Empty;
 });
 

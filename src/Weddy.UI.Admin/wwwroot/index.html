@@ -411,8 +411,8 @@
                     localStorage.removeItem('weddy_admin_key');
                     this.invitations = [];
                     this.eventText = '';
-                    // Редирект на страницу входа
-                    window.location.href = '/login';
+                    // Вызываем endpoint /logout для удаления cookie на сервере
+                    window.location.href = 'logout';
                 },
 
                 async loadEventText() {
