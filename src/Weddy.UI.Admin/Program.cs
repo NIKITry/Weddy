@@ -49,12 +49,14 @@ app.MapPost("/login", async (HttpContext context) =>
     }
     
     // Ключ валиден - устанавливаем cookie
+    // Используем Path = "/" чтобы cookie работал через Nginx прокси
+    // (Nginx проксирует /admin на корневой путь /, поэтому cookie должен быть доступен на корневом пути)
     var cookieOptions = new Microsoft.AspNetCore.Http.CookieOptions
     {
         HttpOnly = true,
         Secure = false, // Установите true для HTTPS
         SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax,
-        Path = "/"
+        Path = "/" // Всегда используем корневой путь для cookie
     };
     
     if (rememberMe)
@@ -64,8 +66,13 @@ app.MapPost("/login", async (HttpContext context) =>
     // Если rememberMe = false, не устанавливаем MaxAge - это будет session cookie
     
     context.Response.Cookies.Append("weddy_admin_key", providedKey, cookieOptions);
+    
+    // Возвращаем JSON с путем для редиректа
+    var prefix = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault() ?? "";
+    var redirectPath = string.IsNullOrEmpty(prefix) ? "/" : prefix;
     context.Response.StatusCode = 200;
-    await context.Response.WriteAsync("OK");
+    context.Response.ContentType = "application/json";
+    await context.Response.WriteAsync($"{{\"redirect\": \"{redirectPath}\"}}");
 });
 
 // Login page - только форма ввода ключа
@@ -148,8 +155,11 @@ app.MapGet("/login", async (HttpContext context) =>
                         });
                         
                         if (response.status === 200) {
+                            // Получаем путь для редиректа из ответа
+                            const data = await response.json();
+                            const redirectPath = data.redirect || (window.location.pathname.replace(/\/login$/, '') || '/');
                             setTimeout(() => {
-                                window.location.href = window.location.pathname.replace(/\/login$/, '') || '/';
+                                window.location.href = redirectPath;
                             }, 200);
                         } else {
                             const errorText = await response.text();
@@ -210,12 +220,13 @@ app.MapGet("/", async (HttpContext context) =>
 // Logout endpoint - очищает cookie и редиректит на страницу входа
 app.MapGet("/logout", async (HttpContext context) =>
 {
-    // Удаляем cookie с явным указанием Path
+    // Удаляем cookie с корневым Path
     context.Response.Cookies.Delete("weddy_admin_key", new Microsoft.AspNetCore.Http.CookieOptions
     {
         Path = "/"
     });
-    // Определяем базовый путь из заголовка X-Forwarded-Prefix или используем относительный путь
+    
+    // Определяем базовый путь из заголовка X-Forwarded-Prefix для редиректа
     var prefix = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault() ?? "";
     var loginPath = string.IsNullOrEmpty(prefix) ? "login" : $"{prefix}/login";
     context.Response.Redirect(loginPath);
