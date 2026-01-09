@@ -40,38 +40,28 @@ app.MapPost("/login", async (HttpContext context) =>
         return;
     }
     
-    // Проверяем ключ через API
-    using var httpClient = new System.Net.Http.HttpClient();
-    httpClient.DefaultRequestHeaders.Add("X-Admin-Key", providedKey);
-    
-    try
+    // Просто сравниваем ключ с эталоном
+    if (providedKey != adminApiKey)
     {
-        var apiResponse = await httpClient.GetAsync($"{apiBaseUrl}/admin/event");
-        if (apiResponse.IsSuccessStatusCode)
-        {
-            // Ключ валиден - устанавливаем cookie
-            var cookieOptions = new Microsoft.AspNetCore.Http.CookieOptions
-            {
-                HttpOnly = true,
-                Secure = false, // Установите true для HTTPS
-                SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax,
-                Path = "/", // Явно указываем путь для cookie
-                MaxAge = rememberMe ? TimeSpan.FromDays(30) : null // Session cookie если не rememberMe
-            };
-            
-            context.Response.Cookies.Append("weddy_admin_key", providedKey, cookieOptions);
-            context.Response.Redirect("/");
-            return;
-        }
-    }
-    catch
-    {
-        // Ошибка подключения к API
+        context.Response.StatusCode = 401;
+        await context.Response.WriteAsync("Неверный API ключ");
+        return;
     }
     
-    // Ключ невалиден
-    context.Response.StatusCode = 401;
-    await context.Response.WriteAsync("Неверный API ключ");
+    // Ключ валиден - устанавливаем cookie
+    var cookieOptions = new Microsoft.AspNetCore.Http.CookieOptions
+    {
+        HttpOnly = true,
+        Secure = false, // Установите true для HTTPS
+        SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax,
+        Path = "/", // Явно указываем путь для cookie
+        MaxAge = rememberMe ? TimeSpan.FromDays(30) : null // Session cookie если не rememberMe
+    };
+    
+    context.Response.Cookies.Append("weddy_admin_key", providedKey, cookieOptions);
+    // Возвращаем 200 OK - редирект сделает JavaScript
+    context.Response.StatusCode = 200;
+    await context.Response.WriteAsync("OK");
 });
 
 // Login page - только форма ввода ключа
@@ -147,12 +137,17 @@ app.MapGet("/login", async (HttpContext context) =>
                         
                         const response = await fetch('login', {
                             method: 'POST',
-                            body: formData
+                            body: formData,
+                            credentials: 'same-origin' // Важно: отправляем cookie
                         });
                         
-                        if (response.ok) {
-                            // Редирект на админку (без ключа в URL)
-                            window.location.href = '/';
+                        // Проверяем статус явно
+                        if (response.status === 200) {
+                            // Cookie установлен, редирект на админку
+                            // Небольшая задержка, чтобы cookie успел установиться
+                            setTimeout(() => {
+                                window.location.href = '/';
+                            }, 100);
                         } else {
                             const errorText = await response.text();
                             this.errorMessage = errorText || 'Неверный API ключ';
