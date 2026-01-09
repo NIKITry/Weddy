@@ -90,9 +90,9 @@ app.MapGet("/login", async (HttpContext context) =>
     <script src=""https://cdn.tailwindcss.com""></script>
     <script defer src=""https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js""></script>
 </head>
-<body class=""bg-gradient-to-br from-pink-50 to-purple-50 min-h-screen flex items-center justify-center"">
-    <div class=""bg-white rounded-lg shadow-lg p-8 max-w-md w-full"" x-data=""loginApp()"">
-        <h1 class=""text-3xl font-bold text-center mb-6 text-purple-600"">🔐 Админ-панель</h1>
+<body class=""bg-gradient-to-br from-pink-50 to-purple-50 min-h-screen flex items-center justify-center px-2 sm:px-4"">
+    <div class=""bg-white rounded-lg shadow-lg p-4 sm:p-8 max-w-md w-full"" x-data=""loginApp()"">
+        <h1 class=""text-2xl sm:text-3xl font-bold text-center mb-4 sm:mb-6 text-purple-600"">🔐 Админ-панель</h1>
         <div class=""space-y-4"">
             <div>
                 <label class=""block text-sm font-medium text-gray-700 mb-2"">API ключ</label>
@@ -101,7 +101,7 @@ app.MapGet("/login", async (HttpContext context) =>
                     @keyup.enter=""login()""
                     type=""password"" 
                     placeholder=""Введите API ключ""
-                    class=""w-full p-3 border rounded-lg focus:ring-2 focus:ring-pink-500"">
+                    class=""w-full p-3 border rounded-lg focus:ring-2 focus:ring-pink-500 text-sm sm:text-base"">
             </div>
             <div class=""flex items-center"">
                 <input 
@@ -109,16 +109,16 @@ app.MapGet("/login", async (HttpContext context) =>
                     type=""checkbox"" 
                     id=""rememberMe""
                     class=""h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"">
-                <label for=""rememberMe"" class=""ml-2 block text-sm text-gray-700"">
+                <label for=""rememberMe"" class=""ml-2 block text-xs sm:text-sm text-gray-700"">
                     Запомнить меня
                 </label>
             </div>
             <button 
                 @click=""login()""
-                class=""w-full bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold"">
+                class=""w-full bg-purple-500 hover:bg-purple-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold text-sm sm:text-base"">
                 Войти
             </button>
-            <div x-show=""errorMessage"" class=""text-red-600 text-sm text-center"" x-text=""errorMessage""></div>
+            <div x-show=""errorMessage"" class=""text-red-600 text-xs sm:text-sm text-center"" x-text=""errorMessage""></div>
         </div>
     </div>
     <script>
@@ -162,7 +162,7 @@ app.MapGet("/login", async (HttpContext context) =>
 </body>
 </html>";
     
-    context.Response.ContentType = "text/html";
+        context.Response.ContentType = "text/html";
     context.Response.Headers.Append("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
     return Results.Content(loginHtml);
 });

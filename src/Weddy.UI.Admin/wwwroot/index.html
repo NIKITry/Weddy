@@ -8,10 +8,10 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="bg-gradient-to-br from-pink-50 to-purple-50 min-h-screen">
-    <div class="container mx-auto px-4 py-8" x-data="adminApp()" x-init="init()">
+    <div class="container mx-auto px-2 sm:px-4 py-4 sm:py-8" x-data="adminApp()" x-init="init()">
         <!-- Admin Key Input -->
-        <div x-show="!adminKey" class="bg-white rounded-lg shadow-lg p-8 max-w-md mx-auto">
-            <h1 class="text-3xl font-bold text-center mb-6 text-purple-600">🔐 Админ-панель</h1>
+        <div x-show="!adminKey" class="bg-white rounded-lg shadow-lg p-4 sm:p-8 max-w-md mx-auto">
+            <h1 class="text-2xl sm:text-3xl font-bold text-center mb-4 sm:mb-6 text-purple-600">🔐 Админ-панель</h1>
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -48,20 +48,20 @@
             <div class="mb-4 flex justify-end">
                 <button 
                     @click="logout()"
-                    class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm">
+                    class="bg-gray-500 hover:bg-gray-600 text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm">
                     🚪 Выйти
                 </button>
             </div>
 
             <!-- Header -->
-            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-                <h1 class="text-3xl font-bold text-gray-800 mb-2">💍 Weddy RSVP</h1>
-                <p class="text-gray-600">Управление свадебными приглашениями</p>
+            <div class="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-4 sm:mb-6">
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">💍 Weddy RSVP</h1>
+                <p class="text-sm sm:text-base text-gray-600">Управление свадебными приглашениями</p>
             </div>
 
             <!-- Event Settings -->
-        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <h2 class="text-2xl font-semibold mb-4">📝 Настройки события</h2>
+        <div class="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-4 sm:mb-6">
+            <h2 class="text-xl sm:text-2xl font-semibold mb-4">📝 Настройки события</h2>
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -110,29 +110,28 @@
                     </label>
                     <div class="space-y-3">
                         <template x-for="(item, index) in eventPlanItems" :key="index">
-                            <div class="flex gap-2 items-start p-3 border rounded-lg bg-gray-50">
-                                <div class="flex-1 grid grid-cols-3 gap-2">
+                            <div class="flex flex-col sm:flex-row gap-2 items-start p-3 border rounded-lg bg-gray-50">
+                                <div class="flex-1 w-full grid grid-cols-1 sm:grid-cols-3 gap-2">
                                     <input 
                                         x-model="eventPlanItems[index].time"
                                         type="text" 
                                         placeholder="16:00"
-                                        class="p-2 border rounded text-sm"
-                                        style="max-width: 100px;">
+                                        class="p-2 border rounded text-sm w-full sm:max-w-[100px]">
                                     <input 
                                         x-model="eventPlanItems[index].title"
                                         type="text" 
                                         placeholder="Название события"
-                                        class="p-2 border rounded text-sm">
+                                        class="p-2 border rounded text-sm w-full">
                                     <input 
                                         x-model="eventPlanItems[index].location"
                                         type="text" 
                                         placeholder="Место проведения"
-                                        class="p-2 border rounded text-sm">
+                                        class="p-2 border rounded text-sm w-full">
                                 </div>
                                 <button 
                                     @click="eventPlanItems.splice(index, 1)"
                                     type="button"
-                                    class="text-red-500 hover:text-red-700 px-2">
+                                    class="text-red-500 hover:text-red-700 px-2 self-start sm:self-auto">
                                     ✕
                                 </button>
                             </div>
@@ -140,7 +139,7 @@
                         <button 
                             @click="eventPlanItems.push({ time: '', title: '', location: '' })"
                             type="button"
-                            class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm">
+                            class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm">
                             + Добавить пункт
                         </button>
                     </div>
@@ -161,7 +160,7 @@
             <button 
                 @click="saveEventText()"
                 :disabled="saving"
-                class="mt-4 bg-pink-500 hover:bg-pink-600 text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50">
+                class="mt-4 w-full sm:w-auto bg-pink-500 hover:bg-pink-600 text-white px-4 sm:px-6 py-2 rounded-lg font-semibold disabled:opacity-50 text-sm sm:text-base">
                 <span x-show="!saving">💾 Сохранить</span>
                 <span x-show="saving">⏳ Сохранение...</span>
             </button>
@@ -171,8 +170,8 @@
         </div>
 
         <!-- Create Invitation -->
-        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <h2 class="text-2xl font-semibold mb-4">➕ Создать приглашение</h2>
+        <div class="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-4 sm:mb-6">
+            <h2 class="text-xl sm:text-2xl font-semibold mb-4">➕ Создать приглашение</h2>
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -210,7 +209,7 @@
                 <button 
                     @click="createInvitation()"
                     :disabled="creating"
-                    class="w-full bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50">
+                    class="w-full bg-purple-500 hover:bg-purple-600 text-white px-4 sm:px-6 py-2 rounded-lg font-semibold disabled:opacity-50 text-sm sm:text-base">
                     <span x-show="!creating">✨ Создать приглашение</span>
                     <span x-show="creating">⏳ Создание...</span>
                 </button>
@@ -218,25 +217,25 @@
         </div>
 
         <!-- Invitations List -->
-        <div class="bg-white rounded-lg shadow-lg p-6">
-            <div class="flex justify-between items-center mb-4">
+        <div class="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
                 <div>
-                    <h2 class="text-2xl font-semibold">📋 Список приглашений</h2>
-                    <p class="text-sm text-gray-600 mt-1" x-show="!loading">
+                    <h2 class="text-xl sm:text-2xl font-semibold">📋 Список приглашений</h2>
+                    <p class="text-xs sm:text-sm text-gray-600 mt-1" x-show="!loading">
                         Всего: <span class="font-semibold" x-text="totalCount"></span> приглашений
                     </p>
                 </div>
-                <div class="flex gap-2">
+                <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                     <input 
                         x-model="searchQuery"
                         @input="loadInvitations()"
                         type="text" 
                         placeholder="Поиск..."
-                        class="p-2 border rounded-lg focus:ring-2 focus:ring-pink-500">
+                        class="p-2 border rounded-lg focus:ring-2 focus:ring-pink-500 w-full sm:w-auto">
                     <select 
                         x-model="statusFilter"
                         @change="loadInvitations()"
-                        class="p-2 border rounded-lg focus:ring-2 focus:ring-pink-500">
+                        class="p-2 border rounded-lg focus:ring-2 focus:ring-pink-500 w-full sm:w-auto">
                         <option value="">Все статусы</option>
                         <option value="none">Нет ответа</option>
                         <option value="yes">Придут</option>
@@ -255,10 +254,10 @@
 
             <div class="space-y-4">
                 <template x-for="inv in invitations" :key="inv.id">
-                    <div class="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                        <div class="flex justify-between items-start">
-                            <div class="flex-1">
-                                <h3 class="font-semibold text-lg" x-text="inv.displayName"></h3>
+                    <div class="border rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow">
+                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+                            <div class="flex-1 w-full">
+                                <h3 class="font-semibold text-base sm:text-lg" x-text="inv.displayName"></h3>
                                 <div class="mt-2 space-y-1">
                                     <div class="flex items-center gap-2">
                                         <span class="text-sm text-gray-600">Статус:</span>
@@ -288,23 +287,23 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="flex gap-2 ml-4">
+                            <div class="flex flex-wrap gap-2 sm:ml-4 sm:flex-nowrap">
                                 <button 
                                     @click="copyLink(inv.token)"
-                                    class="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded text-sm">
-                                    📋 Копировать ссылку
+                                    class="bg-gray-100 hover:bg-gray-200 px-2 sm:px-3 py-1 rounded text-xs sm:text-sm flex-1 sm:flex-none">
+                                    📋 <span class="hidden sm:inline">Копировать ссылку</span><span class="sm:hidden">Копировать</span>
                                 </button>
                                 <button 
                                     @click="toggleArchive(inv)"
                                     :class="inv.archived ? 'bg-green-500 hover:bg-green-600' : 'bg-orange-500 hover:bg-orange-600'"
-                                    class="text-white px-3 py-1 rounded text-sm">
-                                    <span x-show="!inv.archived">📦 Архивировать</span>
-                                    <span x-show="inv.archived">📤 Разархивировать</span>
+                                    class="text-white px-2 sm:px-3 py-1 rounded text-xs sm:text-sm flex-1 sm:flex-none">
+                                    <span x-show="!inv.archived">📦 <span class="hidden sm:inline">Архивировать</span><span class="sm:hidden">Архив</span></span>
+                                    <span x-show="inv.archived">📤 <span class="hidden sm:inline">Разархивировать</span><span class="sm:hidden">Разарх</span></span>
                                 </button>
                                 <button 
                                     @click="deleteInvitation(inv)"
-                                    class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">
-                                    🗑️ Удалить
+                                    class="bg-red-500 hover:bg-red-600 text-white px-2 sm:px-3 py-1 rounded text-xs sm:text-sm flex-1 sm:flex-none">
+                                    🗑️ <span class="hidden sm:inline">Удалить</span>
                                 </button>
                             </div>
                         </div>
