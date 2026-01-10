@@ -158,10 +158,12 @@ app.MapPost("/login", async (HttpContext context) =>
     context.Response.Cookies.Append("weddy_admin_key", providedKey, cookieOptions);
     
     // Возвращаем JSON с путем для редиректа
-    // Используем относительный путь, чтобы браузер сам определил правильный путь
+    // Определяем базовый путь из заголовка X-Forwarded-Prefix
+    var prefix = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault() ?? "";
+    var redirectPath = string.IsNullOrEmpty(prefix) ? "/" : prefix;
     context.Response.StatusCode = 200;
     context.Response.ContentType = "application/json";
-    await context.Response.WriteAsync("{\"redirect\": \"./\"}");
+    await context.Response.WriteAsync($"{{\"redirect\": \"{redirectPath}\"}}");
 });
 
 // Login page - только форма ввода ключа (для прямого доступа к /login)
@@ -172,8 +174,10 @@ app.MapGet("/login", async (HttpContext context) =>
     if (!string.IsNullOrEmpty(providedKey) && providedKey == adminApiKey)
     {
         // Уже авторизован - редирект на главную
-        // Используем относительный путь для редиректа
-        context.Response.Redirect("./", permanent: false);
+        // Определяем базовый путь из заголовка X-Forwarded-Prefix
+        var prefix = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault() ?? "";
+        var homePath = string.IsNullOrEmpty(prefix) ? "/" : prefix;
+        context.Response.Redirect(homePath, permanent: false);
         return Results.Empty;
     }
     
@@ -193,8 +197,10 @@ app.MapGet("/", async (HttpContext context) =>
     if (string.IsNullOrEmpty(providedKey) || providedKey != adminApiKey)
     {
         // Ключ не предоставлен или неверный - редирект на страницу логина
-        // Используем относительный путь, браузер сам определит правильный путь (/admin/login)
-        context.Response.Redirect("login", permanent: false);
+        // Определяем базовый путь из заголовка X-Forwarded-Prefix для правильного редиректа
+        var prefix = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault() ?? "";
+        var loginPath = string.IsNullOrEmpty(prefix) ? "login" : $"{prefix}/login";
+        context.Response.Redirect(loginPath, permanent: false);
         return Results.Empty;
     }
     
@@ -228,8 +234,10 @@ app.MapGet("/logout", async (HttpContext context) =>
         Path = "/"
     });
     
-    // Редирект на страницу входа (относительный путь)
-    context.Response.Redirect("login", permanent: false);
+    // Определяем базовый путь из заголовка X-Forwarded-Prefix для редиректа
+    var prefix = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault() ?? "";
+    var loginPath = string.IsNullOrEmpty(prefix) ? "login" : $"{prefix}/login";
+    context.Response.Redirect(loginPath, permanent: false);
     return Results.Empty;
 });
 
