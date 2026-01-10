@@ -76,6 +76,14 @@ static string GetLoginHtml()
                 adminKeyInput: '',
                 rememberMe: false,
                 errorMessage: '',
+                getLoginPath() {
+                    // Определяем правильный путь для логина на основе текущего URL
+                    const currentPath = window.location.pathname;
+                    if (currentPath.startsWith('/admin')) {
+                        return '/admin/login';
+                    }
+                    return '/login';
+                },
                 async login() {
                     if (!this.adminKeyInput.trim()) {
                         this.errorMessage = 'Введите API ключ';
@@ -87,7 +95,8 @@ static string GetLoginHtml()
                         formData.append('key', this.adminKeyInput.trim());
                         formData.append('rememberMe', this.rememberMe);
                         
-                        const response = await fetch('login', {
+                        const loginPath = this.getLoginPath();
+                        const response = await fetch(loginPath, {
                             method: 'POST',
                             body: formData,
                             credentials: 'same-origin'
@@ -96,8 +105,7 @@ static string GetLoginHtml()
                         if (response.status === 200) {
                             // Получаем путь для редиректа из ответа
                             const data = await response.json();
-                            // Используем относительный путь из ответа или убираем /login из текущего пути
-                            const redirectPath = data.redirect || window.location.pathname.replace(/\/login$/, '') || './';
+                            const redirectPath = data.redirect || (window.location.pathname.startsWith('/admin') ? '/admin/' : '/');
                             setTimeout(() => {
                                 window.location.href = redirectPath;
                             }, 200);
@@ -339,7 +347,7 @@ app.MapPost("/admin/login", async (HttpContext context) =>
     context.Response.Cookies.Append("weddy_admin_key", providedKey, cookieOptions);
     context.Response.StatusCode = 200;
     context.Response.ContentType = "application/json";
-    await context.Response.WriteAsync("{\"redirect\": \"/admin\"}");
+    await context.Response.WriteAsync("{\"redirect\": \"/admin/\"}");
 });
 
 app.MapGet("/admin/logout", async (HttpContext context) =>
