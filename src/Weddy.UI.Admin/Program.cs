@@ -24,6 +24,31 @@ if (!string.IsNullOrWhiteSpace(invitationBaseUrl) &&
     }
 }
 
+// Настраиваем WebRootPath если не установлен
+if (string.IsNullOrEmpty(builder.Environment.WebRootPath))
+{
+    var appDirectory = AppContext.BaseDirectory;
+    var wwwrootPath = Path.Combine(appDirectory, "wwwroot");
+    if (Directory.Exists(wwwrootPath))
+    {
+        builder.Environment.WebRootPath = wwwrootPath;
+    }
+    else
+    {
+        // Пробуем путь относительно текущей директории
+        var currentDirWwwroot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+        if (Directory.Exists(currentDirWwwroot))
+        {
+            builder.Environment.WebRootPath = currentDirWwwroot;
+        }
+        else
+        {
+            // Последняя попытка - используем appDirectory как базовый путь
+            builder.Environment.WebRootPath = appDirectory;
+        }
+    }
+}
+
 var app = builder.Build();
 
 // Вспомогательная функция для получения HTML формы логина
@@ -199,23 +224,59 @@ app.MapGet("/login", async (HttpContext context) =>
 // Admin UI Route - отдаем HTML админки или редирект на login (для / и /admin)
 app.MapGet("/", async (HttpContext context) =>
 {
-    // Проверяем ключ только из cookie (безопасно)
-    var providedKey = context.Request.Cookies["weddy_admin_key"];
-    
-    if (string.IsNullOrEmpty(providedKey) || providedKey != adminApiKey)
+    try
     {
-        // Ключ не предоставлен или неверный - редирект на страницу логина
-        // Определяем базовый путь из заголовка X-Forwarded-Prefix для правильного редиректа
-        var prefix = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault() ?? "";
-        var loginPath = string.IsNullOrEmpty(prefix) ? "login" : $"{prefix}/login";
-        context.Response.Redirect(loginPath, permanent: false);
-        return Results.Empty;
-    }
-    
-    // Ключ валиден - отдаем полный HTML админки
-    var htmlPath = Path.Combine(app.Environment.WebRootPath ?? "wwwroot", "index.html");
-    if (File.Exists(htmlPath))
-    {
+        // Проверяем ключ только из cookie (безопасно)
+        var providedKey = context.Request.Cookies["weddy_admin_key"];
+        
+        if (string.IsNullOrEmpty(providedKey) || providedKey != adminApiKey)
+        {
+            // Ключ не предоставлен или неверный - редирект на страницу логина
+            // Определяем базовый путь из заголовка X-Forwarded-Prefix для правильного редиректа
+            var prefix = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault() ?? "";
+            var loginPath = string.IsNullOrEmpty(prefix) ? "login" : $"{prefix}/login";
+            context.Response.Redirect(loginPath, permanent: false);
+            return Results.Empty;
+        }
+        
+        // Ключ валиден - отдаем полный HTML админки
+        // Определяем путь к файлу
+        var webRootPath = app.Environment.WebRootPath;
+        if (string.IsNullOrEmpty(webRootPath))
+        {
+            webRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot");
+        }
+        
+        var htmlPath = Path.Combine(webRootPath, "index.html");
+        
+        // Если файл не найден, пробуем альтернативные пути
+        if (!File.Exists(htmlPath))
+        {
+            var altPaths = new[]
+            {
+                Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "index.html"),
+                Path.Combine(AppContext.BaseDirectory, "index.html"),
+                Path.Combine(Directory.GetCurrentDirectory(), "index.html")
+            };
+            
+            foreach (var altPath in altPaths)
+            {
+                if (File.Exists(altPath))
+                {
+                    htmlPath = altPath;
+                    break;
+                }
+            }
+        }
+        
+        if (!File.Exists(htmlPath))
+        {
+            context.Response.StatusCode = 500;
+            var errorMsg = $"HTML file not found. WebRootPath: {webRootPath}, BaseDirectory: {AppContext.BaseDirectory}, CurrentDirectory: {Directory.GetCurrentDirectory()}, Tried: {htmlPath}";
+            await context.Response.WriteAsync(errorMsg);
+            return Results.Empty;
+        }
+        
         var html = await File.ReadAllTextAsync(htmlPath);
         
         // Заменяем плейсхолдеры на реальные URL
@@ -230,7 +291,12 @@ app.MapGet("/", async (HttpContext context) =>
         context.Response.Headers.Append("Last-Modified", DateTime.UtcNow.ToString("R"));
         return Results.Content(html);
     }
-    return Results.NotFound();
+    catch (Exception ex)
+    {
+        context.Response.StatusCode = 500;
+        await context.Response.WriteAsync($"Error: {ex.Message}\nStack: {ex.StackTrace}");
+        return Results.Empty;
+    }
 });
 
 // Logout endpoint - очищает cookie и редиректит на страницу входа (для /logout и /admin/logout)
@@ -266,18 +332,54 @@ app.MapGet("/admin", async (HttpContext context) =>
 
 app.MapGet("/admin/", async (HttpContext context) =>
 {
-    // Проверяем cookie и показываем админку
-    var providedKey = context.Request.Cookies["weddy_admin_key"];
-    if (string.IsNullOrEmpty(providedKey) || providedKey != adminApiKey)
+    try
     {
-        context.Response.Redirect("/admin/login", permanent: false);
-        return Results.Empty;
-    }
-    
-    // Ключ валиден - отдаем полный HTML админки
-    var htmlPath = Path.Combine(app.Environment.WebRootPath ?? "wwwroot", "index.html");
-    if (File.Exists(htmlPath))
-    {
+        // Проверяем cookie и показываем админку
+        var providedKey = context.Request.Cookies["weddy_admin_key"];
+        if (string.IsNullOrEmpty(providedKey) || providedKey != adminApiKey)
+        {
+            context.Response.Redirect("/admin/login", permanent: false);
+            return Results.Empty;
+        }
+        
+        // Ключ валиден - отдаем полный HTML админки
+        // Определяем путь к файлу
+        var webRootPath = app.Environment.WebRootPath;
+        if (string.IsNullOrEmpty(webRootPath))
+        {
+            webRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot");
+        }
+        
+        var htmlPath = Path.Combine(webRootPath, "index.html");
+        
+        // Если файл не найден, пробуем альтернативные пути
+        if (!File.Exists(htmlPath))
+        {
+            var altPaths = new[]
+            {
+                Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "index.html"),
+                Path.Combine(AppContext.BaseDirectory, "index.html"),
+                Path.Combine(Directory.GetCurrentDirectory(), "index.html")
+            };
+            
+            foreach (var altPath in altPaths)
+            {
+                if (File.Exists(altPath))
+                {
+                    htmlPath = altPath;
+                    break;
+                }
+            }
+        }
+        
+        if (!File.Exists(htmlPath))
+        {
+            context.Response.StatusCode = 500;
+            var errorMsg = $"HTML file not found. WebRootPath: {webRootPath}, BaseDirectory: {AppContext.BaseDirectory}, CurrentDirectory: {Directory.GetCurrentDirectory()}, Tried: {htmlPath}";
+            await context.Response.WriteAsync(errorMsg);
+            return Results.Empty;
+        }
+        
         var html = await File.ReadAllTextAsync(htmlPath);
         html = html.Replace("{{INVITATION_BASE_URL}}", invitationBaseUrl);
         html = html.Replace("{{API_BASE_URL}}", apiBaseUrl);
@@ -290,7 +392,12 @@ app.MapGet("/admin/", async (HttpContext context) =>
         context.Response.Headers.Append("Last-Modified", DateTime.UtcNow.ToString("R"));
         return Results.Content(html);
     }
-    return Results.NotFound();
+    catch (Exception ex)
+    {
+        context.Response.StatusCode = 500;
+        await context.Response.WriteAsync($"Error: {ex.Message}\nStack: {ex.StackTrace}");
+        return Results.Empty;
+    }
 });
 
 app.MapGet("/admin/login", async (HttpContext context) =>
