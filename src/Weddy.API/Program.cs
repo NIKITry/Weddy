@@ -93,11 +93,13 @@ app.Use(async (context, next) =>
 {
     if (context.Request.Path.StartsWithSegments("/admin"))
     {
-        var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault();
-        if (providedKey != adminKey)
+        // Проверяем сначала заголовок X-Admin-Key, затем cookie
+        var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault() 
+                         ?? context.Request.Cookies["weddy_admin_key"];
+        if (string.IsNullOrEmpty(providedKey) || providedKey != adminKey)
         {
             context.Response.StatusCode = 401;
-            await context.Response.WriteAsync("Unauthorized: Invalid or missing X-Admin-Key");
+            await context.Response.WriteAsync("Unauthorized: Invalid or missing authentication");
             return;
         }
     }
