@@ -125,14 +125,16 @@ static string GetLoginHtml()
                             method: 'POST',
                             body: formData,
                             credentials: 'same-origin',
-                            redirect: 'follow' // Следовать редиректам автоматически
+                            redirect: 'manual' // Обрабатываем редирект вручную
                         });
                         
-                        // Если успешный ответ (200) или редирект (302), браузер автоматически выполнит редирект
-                        if (response.ok || response.redirected) {
-                            // Серверный редирект - браузер автоматически перейдет на новый URL
-                            // Обновляем страницу, чтобы применить редирект
-                            window.location.href = response.url || '/admin';
+                        // Если редирект (302) или успешный ответ (200)
+                        if (response.status === 302 || response.status === 200) {
+                            // Серверный редирект - определяем куда редиректить
+                            const redirectUrl = response.headers.get('Location') || 
+                                              (window.location.pathname.startsWith('/admin') ? '/admin' : '/');
+                            // Обновляем страницу с учетом редиректа
+                            window.location.href = redirectUrl;
                             return;
                         } else {
                             const errorText = await response.text();
@@ -158,17 +160,13 @@ app.MapPost("/login", async (HttpContext context) =>
     
     if (string.IsNullOrWhiteSpace(providedKey))
     {
-        context.Response.StatusCode = 400;
-        await context.Response.WriteAsync("API ключ не предоставлен");
-        return;
+        return Results.BadRequest("API ключ не предоставлен");
     }
     
     // Просто сравниваем ключ с эталоном
     if (providedKey != adminApiKey)
     {
-        context.Response.StatusCode = 401;
-        await context.Response.WriteAsync("Неверный API ключ");
-        return;
+        return Results.Unauthorized();
     }
     
     // Ключ валиден - устанавливаем cookie
@@ -415,16 +413,12 @@ app.MapPost("/admin/login", async (HttpContext context) =>
     
     if (string.IsNullOrWhiteSpace(providedKey))
     {
-        context.Response.StatusCode = 400;
-        await context.Response.WriteAsync("API ключ не предоставлен");
-        return;
+        return Results.BadRequest("API ключ не предоставлен");
     }
     
     if (providedKey != adminApiKey)
     {
-        context.Response.StatusCode = 401;
-        await context.Response.WriteAsync("Неверный API ключ");
-        return;
+        return Results.Unauthorized();
     }
     
     // Определяем, работает ли приложение через HTTPS
