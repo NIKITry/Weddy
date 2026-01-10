@@ -195,8 +195,7 @@ app.MapPost("/login", async (HttpContext context) =>
     // Это гарантирует, что cookie будет установлен до редиректа
     var prefix = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault() ?? "";
     var redirectPath = string.IsNullOrEmpty(prefix) ? "/" : prefix;
-    context.Response.Redirect(redirectPath, permanent: false);
-    return Results.Empty;
+    return Results.Redirect(redirectPath, permanent: false);
 });
 
 // Login page - только форма ввода ключа (для прямого доступа к /login)
@@ -210,8 +209,7 @@ app.MapGet("/login", async (HttpContext context) =>
         // Определяем базовый путь из заголовка X-Forwarded-Prefix
         var prefix = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault() ?? "";
         var homePath = string.IsNullOrEmpty(prefix) ? "/" : prefix;
-        context.Response.Redirect(homePath, permanent: false);
-        return Results.Empty;
+        return Results.Redirect(homePath, permanent: false);
     }
     
     // Показываем форму логина
@@ -235,8 +233,7 @@ app.MapGet("/", async (HttpContext context) =>
             // Определяем базовый путь из заголовка X-Forwarded-Prefix для правильного редиректа
             var prefix = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault() ?? "";
             var loginPath = string.IsNullOrEmpty(prefix) ? "login" : $"{prefix}/login";
-            context.Response.Redirect(loginPath, permanent: false);
-            return Results.Empty;
+            return Results.Redirect(loginPath, permanent: false);
         }
         
         // Ключ валиден - отдаем полный HTML админки
@@ -311,8 +308,7 @@ app.MapGet("/logout", async (HttpContext context) =>
     // Определяем базовый путь из заголовка X-Forwarded-Prefix для редиректа
     var prefix = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault() ?? "";
     var loginPath = string.IsNullOrEmpty(prefix) ? "login" : $"{prefix}/login";
-    context.Response.Redirect(loginPath, permanent: false);
-    return Results.Empty;
+    return Results.Redirect(loginPath, permanent: false);
 });
 
 // Обработка путей с префиксом /admin (когда Nginx передает полный путь)
@@ -325,8 +321,7 @@ app.MapGet("/admin", async (HttpContext context) =>
         var providedKey = context.Request.Cookies["weddy_admin_key"];
         if (string.IsNullOrEmpty(providedKey) || providedKey != adminApiKey)
         {
-            context.Response.Redirect("/admin/login", permanent: false);
-            return Results.Empty;
+            return Results.Redirect("/admin/login", permanent: false);
         }
         
         // Ключ валиден - отдаем полный HTML админки
@@ -394,8 +389,7 @@ app.MapGet("/admin/login", async (HttpContext context) =>
     if (!string.IsNullOrEmpty(providedKey) && providedKey == adminApiKey)
     {
         // Уже авторизован - редирект на главную
-        context.Response.Redirect("/admin", permanent: false);
-        return Results.Empty;
+        return Results.Redirect("/admin", permanent: false);
     }
     
     // Показываем форму логина
@@ -441,8 +435,7 @@ app.MapPost("/admin/login", async (HttpContext context) =>
     
     // Используем серверный редирект вместо JSON ответа
     // Это гарантирует, что cookie будет установлен до редиректа
-    context.Response.Redirect("/admin", permanent: false);
-    return Results.Empty;
+    return Results.Redirect("/admin", permanent: false);
 });
 
 app.MapGet("/admin/logout", async (HttpContext context) =>
@@ -454,8 +447,7 @@ app.MapGet("/admin/logout", async (HttpContext context) =>
     });
     
     // Редирект на страницу логина с учетом префикса
-    context.Response.Redirect("/admin/login", permanent: false);
-    return Results.Empty;
+    return Results.Redirect("/admin/login", permanent: false);
 });
 
 // Static files отключены - HTML отдается через MapGet с заменой плейсхолдеров
