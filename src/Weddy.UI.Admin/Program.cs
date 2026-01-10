@@ -316,21 +316,8 @@ app.MapGet("/logout", async (HttpContext context) =>
 });
 
 // Обработка путей с префиксом /admin (когда Nginx передает полный путь)
+// Используем один маршрут для /admin и /admin/ чтобы избежать конфликта маршрутов
 app.MapGet("/admin", async (HttpContext context) =>
-{
-    // Редирект на /admin/login если нет cookie
-    var providedKey = context.Request.Cookies["weddy_admin_key"];
-    if (string.IsNullOrEmpty(providedKey) || providedKey != adminApiKey)
-    {
-        context.Response.Redirect("/admin/login", permanent: false);
-        return Results.Empty;
-    }
-    // Если есть cookie - редирект на /admin/ (который покажет админку)
-    context.Response.Redirect("/admin/", permanent: false);
-    return Results.Empty;
-});
-
-app.MapGet("/admin/", async (HttpContext context) =>
 {
     try
     {
@@ -407,7 +394,7 @@ app.MapGet("/admin/login", async (HttpContext context) =>
     if (!string.IsNullOrEmpty(providedKey) && providedKey == adminApiKey)
     {
         // Уже авторизован - редирект на главную
-        context.Response.Redirect("/admin/", permanent: false);
+        context.Response.Redirect("/admin", permanent: false);
         return Results.Empty;
     }
     
