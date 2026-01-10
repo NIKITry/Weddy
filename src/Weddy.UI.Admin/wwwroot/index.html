@@ -411,7 +411,10 @@
                     this.invitations = [];
                     this.eventText = '';
                     // Вызываем endpoint /logout для удаления cookie на сервере
-                    window.location.href = 'logout';
+                    // Определяем правильный путь для logout на основе текущего URL
+                    const currentPath = window.location.pathname;
+                    const logoutPath = currentPath.startsWith('/admin') ? '/admin/logout' : '/logout';
+                    window.location.href = logoutPath;
                 },
 
                 async loadEventText() {

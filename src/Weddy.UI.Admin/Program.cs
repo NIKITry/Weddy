@@ -425,10 +425,13 @@ app.MapPost("/admin/login", async (HttpContext context) =>
         return;
     }
     
+    // Определяем, работает ли приложение через HTTPS
+    var isHttps = context.Request.Headers["X-Forwarded-Proto"].FirstOrDefault() == "https" 
+                  || context.Request.Scheme == "https";
     var cookieOptions = new Microsoft.AspNetCore.Http.CookieOptions
     {
         HttpOnly = true,
-        Secure = false,
+        Secure = isHttps, // Используем HTTPS если доступен
         SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax,
         Path = "/"
     };
@@ -441,15 +444,18 @@ app.MapPost("/admin/login", async (HttpContext context) =>
     context.Response.Cookies.Append("weddy_admin_key", providedKey, cookieOptions);
     context.Response.StatusCode = 200;
     context.Response.ContentType = "application/json";
-    await context.Response.WriteAsync("{\"redirect\": \"/admin/\"}");
+    await context.Response.WriteAsync("{\"redirect\": \"/admin\"}");
 });
 
 app.MapGet("/admin/logout", async (HttpContext context) =>
 {
+    // Удаляем cookie с корневым Path
     context.Response.Cookies.Delete("weddy_admin_key", new Microsoft.AspNetCore.Http.CookieOptions
     {
         Path = "/"
     });
+    
+    // Редирект на страницу логина с учетом префикса
     context.Response.Redirect("/admin/login", permanent: false);
     return Results.Empty;
 });
