@@ -26,71 +26,10 @@ if (!string.IsNullOrWhiteSpace(invitationBaseUrl) &&
 
 var app = builder.Build();
 
-// Login endpoint - POST запрос для проверки ключа
-app.MapPost("/login", async (HttpContext context) =>
+// Вспомогательная функция для получения HTML формы логина
+static string GetLoginHtml()
 {
-    var form = await context.Request.ReadFormAsync();
-    var providedKey = form["key"].FirstOrDefault();
-    var rememberMe = form["rememberMe"].FirstOrDefault() == "true";
-    
-    if (string.IsNullOrWhiteSpace(providedKey))
-    {
-        context.Response.StatusCode = 400;
-        await context.Response.WriteAsync("API ключ не предоставлен");
-        return;
-    }
-    
-    // Просто сравниваем ключ с эталоном
-    if (providedKey != adminApiKey)
-    {
-        context.Response.StatusCode = 401;
-        await context.Response.WriteAsync("Неверный API ключ");
-        return;
-    }
-    
-    // Ключ валиден - устанавливаем cookie
-    // Используем Path = "/" чтобы cookie работал через Nginx прокси
-    // (Nginx проксирует /admin на корневой путь /, поэтому cookie должен быть доступен на корневом пути)
-    var cookieOptions = new Microsoft.AspNetCore.Http.CookieOptions
-    {
-        HttpOnly = true,
-        Secure = false, // Установите true для HTTPS
-        SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax,
-        Path = "/" // Всегда используем корневой путь для cookie
-    };
-    
-    if (rememberMe)
-    {
-        cookieOptions.MaxAge = TimeSpan.FromDays(30);
-    }
-    // Если rememberMe = false, не устанавливаем MaxAge - это будет session cookie
-    
-    context.Response.Cookies.Append("weddy_admin_key", providedKey, cookieOptions);
-    
-    // Возвращаем JSON с путем для редиректа
-    // Используем относительный путь, чтобы браузер сам определил правильный путь
-    context.Response.StatusCode = 200;
-    context.Response.ContentType = "application/json";
-    await context.Response.WriteAsync("{\"redirect\": \"./\"}");
-});
-
-// Login page - только форма ввода ключа
-app.MapGet("/login", async (HttpContext context) =>
-{
-    // Проверяем, есть ли уже валидный ключ в cookie
-    var providedKey = context.Request.Cookies["weddy_admin_key"];
-    if (!string.IsNullOrEmpty(providedKey) && providedKey == adminApiKey)
-    {
-        // Уже авторизован - редирект на главную
-        // Определяем базовый путь из заголовка X-Forwarded-Prefix
-        var prefix = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault() ?? "";
-        // Если префикс есть, редиректим на него, иначе на корень
-        var redirectPath = string.IsNullOrEmpty(prefix) ? "/" : prefix;
-        context.Response.Redirect(redirectPath, permanent: false);
-        return Results.Empty;
-    }
-    
-    var loginHtml = @"
+    return @"
 <!DOCTYPE html>
 <html lang=""ru"">
 <head>
@@ -175,13 +114,77 @@ app.MapGet("/login", async (HttpContext context) =>
     </script>
 </body>
 </html>";
+}
+
+// Login endpoint - POST запрос для проверки ключа
+app.MapPost("/login", async (HttpContext context) =>
+{
+    var form = await context.Request.ReadFormAsync();
+    var providedKey = form["key"].FirstOrDefault();
+    var rememberMe = form["rememberMe"].FirstOrDefault() == "true";
     
-        context.Response.ContentType = "text/html";
+    if (string.IsNullOrWhiteSpace(providedKey))
+    {
+        context.Response.StatusCode = 400;
+        await context.Response.WriteAsync("API ключ не предоставлен");
+        return;
+    }
+    
+    // Просто сравниваем ключ с эталоном
+    if (providedKey != adminApiKey)
+    {
+        context.Response.StatusCode = 401;
+        await context.Response.WriteAsync("Неверный API ключ");
+        return;
+    }
+    
+    // Ключ валиден - устанавливаем cookie
+    // Используем Path = "/" чтобы cookie работал через Nginx прокси
+    // (Nginx проксирует /admin на корневой путь /, поэтому cookie должен быть доступен на корневом пути)
+    var cookieOptions = new Microsoft.AspNetCore.Http.CookieOptions
+    {
+        HttpOnly = true,
+        Secure = false, // Установите true для HTTPS
+        SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax,
+        Path = "/" // Всегда используем корневой путь для cookie
+    };
+    
+    if (rememberMe)
+    {
+        cookieOptions.MaxAge = TimeSpan.FromDays(30);
+    }
+    // Если rememberMe = false, не устанавливаем MaxAge - это будет session cookie
+    
+    context.Response.Cookies.Append("weddy_admin_key", providedKey, cookieOptions);
+    
+    // Возвращаем JSON с путем для редиректа
+    // Используем относительный путь, чтобы браузер сам определил правильный путь
+    context.Response.StatusCode = 200;
+    context.Response.ContentType = "application/json";
+    await context.Response.WriteAsync("{\"redirect\": \"./\"}");
+});
+
+// Login page - только форма ввода ключа (для прямого доступа к /login)
+app.MapGet("/login", async (HttpContext context) =>
+{
+    // Проверяем, есть ли уже валидный ключ в cookie
+    var providedKey = context.Request.Cookies["weddy_admin_key"];
+    if (!string.IsNullOrEmpty(providedKey) && providedKey == adminApiKey)
+    {
+        // Уже авторизован - редирект на главную
+        // Используем относительный путь для редиректа
+        context.Response.Redirect("./", permanent: false);
+        return Results.Empty;
+    }
+    
+    // Показываем форму логина
+    var loginHtml = GetLoginHtml();
+    context.Response.ContentType = "text/html";
     context.Response.Headers.Append("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
     return Results.Content(loginHtml);
 });
 
-// Admin UI Route - отдаем HTML только после проверки ключа
+// Admin UI Route - отдаем HTML админки или редирект на login
 app.MapGet("/", async (HttpContext context) =>
 {
     // Проверяем ключ только из cookie (безопасно)
@@ -189,8 +192,8 @@ app.MapGet("/", async (HttpContext context) =>
     
     if (string.IsNullOrEmpty(providedKey) || providedKey != adminApiKey)
     {
-        // Ключ не предоставлен или неверный - редирект на страницу входа
-        // Используем относительный путь, чтобы браузер сам определил правильный путь
+        // Ключ не предоставлен или неверный - редирект на страницу логина
+        // Используем относительный путь, браузер сам определит правильный путь (/admin/login)
         context.Response.Redirect("login", permanent: false);
         return Results.Empty;
     }
