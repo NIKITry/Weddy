@@ -124,16 +124,16 @@ static string GetLoginHtml()
                         const response = await fetch(loginPath, {
                             method: 'POST',
                             body: formData,
-                            credentials: 'same-origin'
+                            credentials: 'same-origin',
+                            redirect: 'follow' // Следовать редиректам автоматически
                         });
                         
-                        if (response.status === 200) {
-                            // Получаем путь для редиректа из ответа
-                            const data = await response.json();
-                            const redirectPath = data.redirect || (window.location.pathname.startsWith('/admin') ? '/admin/' : '/');
-                            setTimeout(() => {
-                                window.location.href = redirectPath;
-                            }, 200);
+                        // Если успешный ответ (200) или редирект (302), браузер автоматически выполнит редирект
+                        if (response.ok || response.redirected) {
+                            // Серверный редирект - браузер автоматически перейдет на новый URL
+                            // Обновляем страницу, чтобы применить редирект
+                            window.location.href = response.url || '/admin';
+                            return;
                         } else {
                             const errorText = await response.text();
                             this.errorMessage = errorText || 'Неверный API ключ';
@@ -174,10 +174,13 @@ app.MapPost("/login", async (HttpContext context) =>
     // Ключ валиден - устанавливаем cookie
     // Используем Path = "/" чтобы cookie работал через Nginx прокси
     // (Nginx проксирует /admin на корневой путь /, поэтому cookie должен быть доступен на корневом пути)
+    // Определяем, работает ли приложение через HTTPS
+    var isHttps = context.Request.Headers["X-Forwarded-Proto"].FirstOrDefault() == "https" 
+                  || context.Request.Scheme == "https";
     var cookieOptions = new Microsoft.AspNetCore.Http.CookieOptions
     {
         HttpOnly = true,
-        Secure = false, // Установите true для HTTPS
+        Secure = isHttps, // Используем HTTPS если доступен
         SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax,
         Path = "/" // Всегда используем корневой путь для cookie
     };
@@ -190,13 +193,12 @@ app.MapPost("/login", async (HttpContext context) =>
     
     context.Response.Cookies.Append("weddy_admin_key", providedKey, cookieOptions);
     
-    // Возвращаем JSON с путем для редиректа
-    // Определяем базовый путь из заголовка X-Forwarded-Prefix
+    // Используем серверный редирект вместо JSON ответа
+    // Это гарантирует, что cookie будет установлен до редиректа
     var prefix = context.Request.Headers["X-Forwarded-Prefix"].FirstOrDefault() ?? "";
     var redirectPath = string.IsNullOrEmpty(prefix) ? "/" : prefix;
-    context.Response.StatusCode = 200;
-    context.Response.ContentType = "application/json";
-    await context.Response.WriteAsync($"{{\"redirect\": \"{redirectPath}\"}}");
+    context.Response.Redirect(redirectPath, permanent: false);
+    return Results.Empty;
 });
 
 // Login page - только форма ввода ключа (для прямого доступа к /login)
@@ -442,9 +444,11 @@ app.MapPost("/admin/login", async (HttpContext context) =>
     }
     
     context.Response.Cookies.Append("weddy_admin_key", providedKey, cookieOptions);
-    context.Response.StatusCode = 200;
-    context.Response.ContentType = "application/json";
-    await context.Response.WriteAsync("{\"redirect\": \"/admin\"}");
+    
+    // Используем серверный редирект вместо JSON ответа
+    // Это гарантирует, что cookie будет установлен до редиректа
+    context.Response.Redirect("/admin", permanent: false);
+    return Results.Empty;
 });
 
 app.MapGet("/admin/logout", async (HttpContext context) =>
